@@ -1,6 +1,6 @@
 /* MedCare service worker — offline cache of the app shell */
 
-const CACHE = 'medcare-v2';
+const CACHE = 'medcare-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -34,8 +34,10 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   if (new URL(req.url).origin !== location.origin) return; // let cross-origin pass through
 
+  // 'no-cache' forces revalidation with the server, so changed files (new deploys)
+  // are always picked up instead of being served stale from the browser HTTP cache.
   e.respondWith(
-    fetch(req).then((res) => {
+    fetch(req, { cache: 'no-cache' }).then((res) => {
       if (res.ok) {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy));

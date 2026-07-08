@@ -17,11 +17,22 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 
 const SKIP_REASONS = [
-  { id: 'refused', en: 'Refused', zh: '拒絕食' },
-  { id: 'unwell', en: 'Feeling unwell', zh: '唔舒服' },
-  { id: 'asleep', en: 'Asleep', zh: '瞓咗' },
-  { id: 'away', en: 'Not at home', zh: '唔喺屋企' },
-  { id: 'other', en: 'Other', zh: '其他' },
+  {
+    id: 'refused', en: 'Refused', zh: '發脾氣拒絕',
+    svg: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="32" cy="32" r="27" fill="#ffcdd2" stroke="#c62828" stroke-width="2.5"/><path d="M17 23 L28 27" stroke="#c62828" stroke-width="3.5" stroke-linecap="round"/><path d="M47 23 L36 27" stroke="#c62828" stroke-width="3.5" stroke-linecap="round"/><circle cx="24" cy="33" r="2.8" fill="#c62828"/><circle cx="40" cy="33" r="2.8" fill="#c62828"/><path d="M23 47 Q32 40 41 47" fill="none" stroke="#c62828" stroke-width="3.5" stroke-linecap="round"/></svg>',
+  },
+  {
+    id: 'asleep', en: 'Asleep', zh: '瞓咗',
+    svg: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="34" r="25" fill="#e3f0fb" stroke="#1565c0" stroke-width="2.5"/><path d="M17 32 Q22 37 27 32" fill="none" stroke="#1565c0" stroke-width="3" stroke-linecap="round"/><path d="M33 32 Q38 37 43 32" fill="none" stroke="#1565c0" stroke-width="3" stroke-linecap="round"/><circle cx="30" cy="44" r="3.5" fill="none" stroke="#1565c0" stroke-width="2.5"/><path d="M44 13 h9 l-9 9 h9" fill="none" stroke="#1565c0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  },
+  {
+    id: 'unwell', en: 'Feeling unwell', zh: '唔舒服',
+    svg: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="32" cy="32" r="27" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2.5"/><path d="M18 31 Q23 28 28 31" fill="none" stroke="#2e7d32" stroke-width="3" stroke-linecap="round"/><path d="M36 31 Q41 28 46 31" fill="none" stroke="#2e7d32" stroke-width="3" stroke-linecap="round"/><path d="M22 45 q5 -5 10 0 t10 0" fill="none" stroke="#2e7d32" stroke-width="3" stroke-linecap="round"/></svg>',
+  },
+  {
+    id: 'other', en: 'Other', zh: '其他',
+    svg: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="32" cy="32" r="27" fill="#eef1f5" stroke="#54677a" stroke-width="2.5"/><path d="M25 25 q0 -8 8 -8 q9 0 9 8 q0 6 -7 8 q-2 1 -2 5" fill="none" stroke="#54677a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="33" cy="45" r="2.8" fill="#54677a"/></svg>',
+  },
 ];
 
 const DELAY_OPTIONS = [15, 30, 60]; // minutes
@@ -484,7 +495,9 @@ function renderFlowSkip() {
 
   for (const r of SKIP_REASONS) {
     const b = el('button', { class: 'reason-btn' },
-      el('div', {}, r.en), el('div', { class: 'zh', style: 'font-size:0.95rem' }, r.zh));
+      el('div', { class: 'reason-ill', html: r.svg }),
+      el('div', { class: 'reason-en' }, r.en),
+      el('div', { class: 'zh' }, r.zh));
     b.addEventListener('click', () => {
       selected = r.id;
       grid.querySelectorAll('.reason-btn').forEach((x) => x.classList.remove('selected'));
