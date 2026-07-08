@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <title>MedCare · 食藥記錄</title>
+  <meta name="theme-color" content="#1565c0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="MedCare" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ================= Setup (first run) ================= -->
+  <div id="setupView" class="view">
+    <main>
+      <div class="setup-hero">
+        <div class="logo">💊</div>
+        <h1>MedCare Setup</h1>
+        <p>設定食藥記錄 App<br />First-time setup</p>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Patient · 長者資料</div>
+        <div class="field">
+          <label>Name (English) · 英文名</label>
+          <input type="text" id="setupNameEn" placeholder="e.g. Grandma" />
+        </div>
+        <div class="field">
+          <label>名字 (中文)</label>
+          <input type="text" id="setupNameZh" placeholder="例如：陳奶奶" />
+        </div>
+        <div class="field">
+          <label>Photo · 相片</label>
+          <div class="photo-frame" id="setupPhotoFrame">
+            <div class="cam-icon">📷</div>
+            <div>Tap to add photo · 影相</div>
+          </div>
+          <input type="file" accept="image/*" id="setupPhotoInput" hidden />
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Family PIN · 家人管理密碼</div>
+        <p class="hint" style="margin-bottom:0.8rem">
+          Set a 4-digit PIN. Only family members use it to edit medications and schedule.<br />
+          設定 4 位數字密碼，只有家人用嚟修改藥物同時間表。
+        </p>
+        <div class="field">
+          <label>4-digit PIN · 4 位密碼</label>
+          <input type="password" id="setupPin1" inputmode="numeric" maxlength="4" placeholder="••••" />
+        </div>
+        <div class="field">
+          <label>Confirm PIN · 再輸入一次</label>
+          <input type="password" id="setupPin2" inputmode="numeric" maxlength="4" placeholder="••••" />
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-xl" id="setupSaveBtn">Start · 開始使用</button>
+      <p class="hint" style="text-align:center;margin-top:0.8rem">
+        Sample medications will be added — you can edit them later.<br />會加入示範藥物，之後可以喺管理模式修改。
+      </p>
+    </main>
+  </div>
+
+  <!-- ================= Main app ================= -->
+  <div id="appView" class="view">
+    <header class="appbar">
+      <div class="patient">
+        <img id="barAvatar" class="avatar" alt="patient" />
+        <div>
+          <div class="patient-name" id="barName">—</div>
+          <div class="patient-sub" id="barSub">Medication record</div>
+        </div>
+      </div>
+      <div class="clockbox">
+        <div class="clock-time" id="barClock">--:--</div>
+        <div class="clock-date" id="barDate">—</div>
+      </div>
+    </header>
+
+    <!-- ---------- Today ---------- -->
+    <div id="todayView" class="view active">
+      <main>
+        <h1>Today · 今日食藥</h1>
+        <div id="todayList"></div>
+      </main>
+    </div>
+
+    <!-- ---------- History ---------- -->
+    <div id="historyView" class="view">
+      <main>
+        <h1>History · 記錄</h1>
+        <div class="stats-row">
+          <div class="stat-tile"><div class="v" id="stat7">–</div><div class="l">7-day · 7 日服藥率</div></div>
+          <div class="stat-tile"><div class="v" id="stat30">–</div><div class="l">30-day · 30 日服藥率</div></div>
+        </div>
+        <div class="card">
+          <div class="cal-head">
+            <button class="cal-nav" id="calPrev">‹</button>
+            <h2 id="calTitle">—</h2>
+            <button class="cal-nav" id="calNext">›</button>
+          </div>
+          <div class="cal-grid" id="calDow"></div>
+          <div class="cal-grid" id="calGrid" style="margin-top:5px"></div>
+        </div>
+        <div id="dayDetail"></div>
+      </main>
+    </div>
+
+    <!-- ---------- Admin ---------- -->
+    <div id="adminView" class="view">
+      <main id="adminMain">
+        <!-- populated by JS (locked / unlocked) -->
+      </main>
+    </div>
+
+    <nav class="tabbar">
+      <button class="tab active" data-tab="today"><span class="icon">📋</span>Today · 今日</button>
+      <button class="tab" data-tab="history"><span class="icon">📅</span>History · 記錄</button>
+      <button class="tab" data-tab="admin"><span class="icon">⚙️</span>Manage · 管理</button>
+    </nav>
+  </div>
+
+  <!-- ================= Overlays (injected) ================= -->
+  <div id="overlayRoot"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
