@@ -238,9 +238,15 @@ async function seedSampleData() {
 function todaySessions() {
   const dow = new Date().getDay();
   return state.schedule
-    .filter((s) => s.days.includes(dow) && s.medIds.length > 0)
+    .filter((s) => s.days.includes(dow) && isSessionActive(s))
     .map((s) => ({ session: s, record: state.todayRecords.find((r) => r.sessionId === s.id) || null }))
     .sort((a, b) => timeToMinutes(a.session.time) - timeToMinutes(b.session.time));
+}
+
+// A session shows up if it either lists specific meds, or is a "prepared" session
+// (family already sorted the pills into a box — helper just confirms + photo).
+function isSessionActive(s) {
+  return s.prepared === true || (s.medIds && s.medIds.length > 0);
 }
 
 // status: 'done' | 'late' | 'skipped' | 'due' | 'upcoming' | 'missed'
@@ -294,6 +300,16 @@ function renderToday() {
     }[status];
 
     const medList = el('div', { class: 'med-list' });
+    if (meds.length === 0) {
+      medList.appendChild(el('div', { class: 'med-row' },
+        el('div', { class: 'med-thumb ph' }, '📦'),
+        el('div', {},
+          el('span', { class: 'med-name' }, 'Prepared medicine'),
+          el('span', { class: 'zh' }, ' 家人準備好嘅藥'),
+          el('div', { class: 'med-dose' }, 'Take from the pill box · 食藥盒入面嗰格')
+        )
+      ));
+    }
     for (const m of meds) {
       const thumb = m.photo
         ? el('img', { class: 'med-thumb', src: blobUrl(m.photo), alt: '' })
@@ -339,6 +355,12 @@ function skipReasonLabel(id) {
   return r ? `${r.en} · ${r.zh}` : (id || '—');
 }
 
+// Label for a record's medicines — handles "prepared" sessions with no specific list
+function recMedsLabel(r) {
+  if (r.prepared || !r.medNames || r.medNames.length === 0) return 'Prepared medicine · 家人準備好嘅藥';
+  return r.medNames.join(', ');
+}
+
 /* ============================================================
    Overlays helper
    ============================================================ */
@@ -372,8 +394,19 @@ function openSessionFlow(sessionId) {
 function renderFlowStep1() {
   const s = state.schedule.find((x) => x.id === flowState.sessionId);
   const meds = medsFor(s);
+  const prepared = meds.length === 0;
 
   const checklist = el('div', {});
+  if (prepared) {
+    checklist.appendChild(el('div', { class: 'check-row', style: 'cursor:default' },
+      el('div', { class: 'med-thumb ph', style: 'width:52px;height:52px' }, '📦'),
+      el('div', { class: 'grow' },
+        el('div', { class: 'med-name', style: 'font-size:1.2rem' }, 'Prepared medicine '),
+        el('span', { class: 'zh' }, '家人準備好嘅藥'),
+        el('div', { class: 'rec-note' }, 'Give the pills from the box, then take a photo · 俾藥盒嗰格啲藥，然後影相')
+      )
+    ));
+  }
   for (const m of meds) {
     const row = el('div', {
       class: 'check-row' + (flowState.checked.has(m.id) ? ' checked' : ''),
@@ -399,7 +432,9 @@ function renderFlowStep1() {
   const modal = el('div', { class: 'modal' },
     el('button', { class: 'modal-close', onclick: closeOverlay }, '✕'),
     el('h2', {}, `${s.nameEn} · ${s.nameZh || ''}`),
-    el('div', { class: 'sub' }, `${fmtTime12(s.time)} — Check each medicine · 逐隻藥剔一剔`),
+    el('div', { class: 'sub' }, prepared
+      ? `${fmtTime12(s.time)} — Confirm the prepared medicine · 確認食咗準備好嘅藥`
+      : `${fmtTime12(s.time)} — Check each medicine · 逐隻藥剔一剔`),
     checklist,
     el('div', { class: 'btn-row' },
       el('button', { class: 'btn btn-green btn-block', onclick: () => renderFlowPhoto() }, '✓ Take now · 而家食'),
@@ -562,6 +597,7 @@ async function saveRecord({ status, photoBlob, skipReason, skipNote, checkedMedI
     createdAt: now.toISOString(),
     medIds: s.medIds.slice(),
     medNames: medsFor(s).map((m) => m.nameEn),
+    prepared: medsFor(s).length === 0,
     checkedMedIds: checkedMedIds || [],
     skipReason: skipReason || null,
     skipNote: skipNote || '',
@@ -622,7 +658,9 @@ function stopAlarm() {
 function showAlarmOverlay(entry) {
   const s = entry.session;
   const meds = medsFor(s);
-  const medsText = meds.map((m) => `${m.nameEn} ${m.nameZh || ''} — ${m.dose || ''}`).join('<br />');
+  const medsText = meds.length === 0
+    ? '📦 Prepared medicine · 家人準備好嘅藥'
+    : meds.map((m) => `${m.nameEn} ${m.nameZh || ''} — ${m.dose || ''}`).join('<br />');
 
   const overlay = el('div', { class: 'alarm-overlay', id: 'alarmOverlay' },
     el('div', { class: 'bell' }, '🔔'),
@@ -697,7 +735,7 @@ function adherenceForDays(all, days) {
     const d = new Date(today); d.setDate(today.getDate() - i);
     const dstr = ymd(d);
     const dow = d.getDay();
-    const sessions = state.schedule.filter((s) => s.days.includes(dow) && s.medIds.length > 0);
+    const sessions = state.schedule.filter((s) => s.days.includes(dow) && isSessionActive(s));
     for (const s of sessions) {
       // only count sessions whose time has passed (for today)
       if (i === 0 && timeToMinutes(s.time) > nowMinutes()) continue;
@@ -795,7 +833,7 @@ async function renderDayDetail(dstr) {
           el('div', { class: 'line' }, el('b', {}, `${r.sessionNameEn} · ${r.sessionNameZh}`)),
           el('div', { class: 'line' }, statusBadge),
           el('div', { class: 'line' }, `Scheduled ${fmtTime12(r.scheduledTime)} · Recorded ${fmtTime12(r.actualTime)}`),
-          el('div', { class: 'rec-note' }, 'Meds · 藥物: ' + (r.medNames || []).join(', ')),
+          el('div', { class: 'rec-note' }, 'Meds · 藥物: ' + recMedsLabel(r)),
           r.status === 'skipped'
             ? el('div', { class: 'rec-note' }, 'Reason · 原因: ' + skipReasonLabel(r.skipReason) + (r.skipNote ? ' — ' + r.skipNote : ''))
             : null
@@ -815,7 +853,7 @@ function openRecordDetail(r) {
     el('h2', {}, `${r.sessionNameEn} · ${r.sessionNameZh}`),
     el('div', { class: 'sub' }, statusText + ` — recorded ${fmtTime12(r.actualTime)}`),
     r.photo ? el('img', { style: 'width:100%;border-radius:14px;margin-bottom:0.8rem', src: blobUrl(r.photo) }) : null,
-    el('div', { class: 'rec-note' }, 'Meds · 藥物: ' + (r.medNames || []).join(', ')),
+    el('div', { class: 'rec-note' }, 'Meds · 藥物: ' + recMedsLabel(r)),
     r.status === 'skipped' ? el('div', { class: 'rec-note' }, 'Reason · 原因: ' + skipReasonLabel(r.skipReason) + (r.skipNote ? ' — ' + r.skipNote : '')) : null,
     el('div', { class: 'rec-note', style: 'margin-top:0.6rem;font-size:0.9rem' }, '🔒 This record is locked and cannot be edited · 記錄已鎖定，不可修改')
   );
@@ -922,7 +960,9 @@ function renderAdminPanel(main) {
   const schedCard = el('div', { class: 'card' });
   if (state.schedule.length === 0) schedCard.appendChild(el('div', { class: 'empty-note', style: 'padding:1rem' }, 'No sessions · 未有時段'));
   for (const s of state.schedule) {
-    const medNames = medsFor(s).map((m) => m.nameEn).join(', ') || '(no meds · 未揀藥)';
+    const medNames = s.prepared
+      ? '📦 Prepared medicine · 家人準備好嘅藥'
+      : (medsFor(s).map((m) => m.nameEn).join(', ') || '(no meds · 未揀藥)');
     const daysLabel = s.days.length === 7 ? 'Every day · 每日' : s.days.map((d) => DOW[d]).join(' ');
     schedCard.appendChild(el('div', { class: 'admin-item' },
       el('div', { style: 'text-align:center;min-width:80px' },
@@ -1050,13 +1090,36 @@ function editSession(session) {
     dayChips.appendChild(chip);
   }
 
+  // Medicines field (hidden when the session uses pre-prepared medicine)
+  const medField = el('div', { class: 'field' }, el('label', {}, 'Medicines · 藥物'), medChips);
+  const medHint = el('div', { class: 'hint' }, 'Pick which medicines are taken at this time · 揀呢個時段要食嘅藥');
+  medField.appendChild(medHint);
+
+  const preparedBox = el('input', {
+    type: 'checkbox', id: 'sesPrepared',
+    style: 'width:auto;min-height:auto;transform:scale(1.5);margin-right:0.6rem',
+    ...(s.prepared ? { checked: 'checked' } : {}),
+  });
+  preparedBox.addEventListener('change', () => {
+    medField.style.display = preparedBox.checked ? 'none' : 'block';
+  });
+  if (s.prepared) medField.style.display = 'none';
+
+  const preparedField = el('div', { class: 'field' },
+    el('label', { style: 'display:flex;align-items:center' }, preparedBox,
+      el('span', {}, '📦 Medicine already prepared · 藥物已準備好')),
+    el('div', { class: 'hint' },
+      'Turn on when family pre-sorts the pills into a box — no need to list each medicine. The helper just confirms + takes a photo. · 屋企人已將藥分格執好時開啟，唔使揀個別藥，姐姐確認同影相就得。')
+  );
+
   const modal = el('div', { class: 'modal' },
     el('button', { class: 'modal-close', onclick: closeOverlay }, '✕'),
     el('h2', {}, isNew ? 'Add session · 加時段' : 'Edit session · 改時段'),
     el('div', { class: 'field' }, el('label', {}, 'Time · 時間'), el('input', { type: 'time', id: 'sesTime', value: s.time })),
     el('div', { class: 'field' }, el('label', {}, 'Name (English) · 名'), el('input', { type: 'text', id: 'sesEn', value: s.nameEn, placeholder: 'Morning' })),
     el('div', { class: 'field' }, el('label', {}, '名 (中文)'), el('input', { type: 'text', id: 'sesZh', value: s.nameZh, placeholder: '早上' })),
-    el('div', { class: 'field' }, el('label', {}, 'Medicines · 藥物'), medChips),
+    preparedField,
+    medField,
     el('div', { class: 'field' }, el('label', {}, 'Days · 星期'), dayChips),
     el('div', { class: 'btn-row' },
       !isNew ? el('button', { class: 'btn btn-ghost', onclick: async () => { if (confirm('Delete this session? · 刪除此時段？')) { await dbDelete('schedule', s.id); await refreshSched(); closeOverlay(); } } }, 'Delete · 刪除') : null,
@@ -1065,7 +1128,10 @@ function editSession(session) {
           s.time = document.getElementById('sesTime').value || '08:00';
           s.nameEn = document.getElementById('sesEn').value.trim() || 'Session';
           s.nameZh = document.getElementById('sesZh').value.trim();
+          s.prepared = document.getElementById('sesPrepared').checked;
+          if (s.prepared) s.medIds = [];
           if (s.days.length === 0) { toast('Pick at least one day · 揀最少一日'); return; }
+          if (!s.prepared && s.medIds.length === 0) { toast('Pick medicines, or turn on "prepared" · 揀藥，或開啟「已準備好」'); return; }
           await dbPut('schedule', s);
           await refreshSched();
           closeOverlay();

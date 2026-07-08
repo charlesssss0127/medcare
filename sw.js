@@ -1,6 +1,6 @@
 /* MedCare service worker — offline cache of the app shell */
 
-const CACHE = 'medcare-v1';
+const CACHE = 'medcare-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -26,20 +26,21 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Cache-first for app assets; network fallback. User data lives in IndexedDB (not cached here).
+// Network-first for same-origin GETs: always get the latest app when online, fall
+// back to the cache when offline. This ensures deployed updates reach the iPad.
+// User data lives in IndexedDB (never cached here).
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
+  if (new URL(req.url).origin !== location.origin) return; // let cross-origin pass through
+
   e.respondWith(
-    caches.match(req).then((cached) =>
-      cached || fetch(req).then((res) => {
-        // runtime-cache same-origin GETs
-        if (res.ok && new URL(req.url).origin === location.origin) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
-        }
-        return res;
-      }).catch(() => cached)
-    )
+    fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+      }
+      return res;
+    }).catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
   );
 });
